@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping List Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px;
+            flex: 1;
+        }
+        .input-group {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .list-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        #status {
+            color: green;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛒 Shopping List Test</h1>
+        <div id="status">JavaScript is working!</div>
+        
+        <div class="input-group">
+            <input type="text" id="itemInput" placeholder="Add an item...">
+            <button id="addBtn" class="btn">Add Item</button>
+        </div>
+        
+        <div id="itemList">
+            <!-- Items will appear here -->
+        </div>
+        
+        <div id="emptyMessage">
+            <p>Your list is empty. Add some items!</p>
+        </div>
+    </div>
+
+    <script>
+        console.log('Script loading...');
+        
+        let items = [];
+        let itemCounter = 0;
+        
+        function addItem() {
+            console.log('Add item clicked');
+            const input = document.getElementById('itemInput');
+            const text = input.value.trim();
+            
+            if (!text) {
+                alert('Please enter an item name');
+                return;
+            }
+            
+            items.push({
+                id: ++itemCounter,
+                text: text,
+                created: new Date().toLocaleString()
+            });
+            
+            input.value = '';
+            updateDisplay();
+        }
+        
+        function updateDisplay() {
+            console.log('Updating display, items:', items);
+            const itemList = document.getElementById('itemList');
+            const emptyMessage = document.getElementById('emptyMessage');
+            
+            if (items.length === 0) {
+                itemList.innerHTML = '';
+                emptyMessage.style.display = 'block';
+            } else {
+                emptyMessage.style.display = 'none';
+                itemList.innerHTML = items.map(item => `
+                    <div class="list-item">
+                        <strong>${item.text}</strong>
+                        <br><small>Added: ${item.created}</small>
+                        <button class="btn" onclick="deleteItem(${item.id})" style="float: right; background: #dc3545;">Delete</button>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function deleteItem(id) {
+            items = items.filter(item => item.id !== id);
+            updateDisplay();
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded');
+            
+            const addBtn = document.getElementById('addBtn');
+            const itemInput = document.getElementById('itemInput');
+            
+            addBtn.addEventListener('click', addItem);
+            itemInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addItem();
+                }
+            });
+            
+            updateDisplay();
+            
+            document.getElementById('status').textContent = 'Ready to add items!';
+        });
+        
+        console.log('Script loaded successfully');
+    </script>
+</body>
+</html>

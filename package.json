@@ -1,0 +1,27 @@
+{
+  "name": "smart-shopping-list",
+  "version": "1.0.0",
+  "description": "A smart shopping list app with price checking and drag & drop functionality",
+  "main": "working.html",
+  "scripts": {
+    "serve": "python -m http.server 8000",
+    "build-cordova": "cordova build",
+    "build-capacitor": "npx cap build",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": [
+    "shopping",
+    "list",
+    "mobile",
+    "pwa",
+    "prices"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/cli": "^5.0.0",
+    "@capacitor/core": "^5.0.0",
+    "@capacitor/android": "^5.0.0",
+    "@capacitor/ios": "^5.0.0"
+  }
+}

@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Smart Shopping List</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="A smart shopping list app with price checking and drag & drop functionality">
+    <meta name="theme-color" content="#4facfe">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Shopping List">
+    
+    <!-- PWA Links -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Additional styles for improved layout */
+        .item-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            cursor: grab;
+        }
+
+        .item-content:active {
+            cursor: grabbing;
+        }
+
+        .item-text {
+            flex: 1;
+        }
+
+        .item-actions {
+            display: flex;
+            flex-direction: row;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .price-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+
+        .price-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .timestamp-price-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+
+        .timestamp-price-line .item-timestamp {
+            margin: 0;
+        }
+
+        .item-btn {
+            background: none;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #6c757d;
+            font-size: 1rem;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .item-btn:hover {
+            background: #f8f9fa;
+            transform: scale(1.1);
+        }
+
+        .item-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .edit-btn:hover { color: #007bff; }
+        .price-btn:hover { color: #28a745; }
+        .move-up-btn:hover { color: #28a745; }
+        .move-down-btn:hover { color: #ffc107; }
+        .delete-btn:hover { color: #dc3545; }
+
+        .item-edit {
+            display: none;
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #4facfe;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .item-edit.active {
+            display: block;
+        }
+
+        .item-edit.active + .item-name {
+            display: none;
+        }
+
+        .item-name.editing {
+            display: none;
+        }
+
+        .item-price {
+            background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .price-suggestions {
+            margin-top: 8px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 3px solid #4facfe;
+        }
+
+        .price-suggestions h5 {
+            color: #4facfe;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .price-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .price-option:last-child {
+            border-bottom: none;
+        }
+
+        .store-name {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .store-price {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .item-modified {
+            font-size: 0.8rem;
+            color: #28a745;
+            font-style: italic;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        /* Drag and drop styling */
+        .list-item {
+            transition: all 0.3s ease;
+        }
+
+        .list-item.dragging {
+            opacity: 0.5;
+            transform: rotate(2deg);
+        }
+
+        .list-item.drag-over {
+            border-top: 3px solid #4facfe;
+        }
+
+        .drag-handle {
+            color: #6c757d;
+            cursor: grab;
+            margin-right: 5px;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        @media (max-width: 768px) {
+            .item-actions {
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Hide templates section for now */
+        .template-section {
+            display: none;
+        }
+
+        /* Reduce heights for more compact interface */
+        .add-item-section {
+            padding: 10px 0;
+        }
+
+        .add-item-section .input-group {
+            gap: 8px;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        .add-item-section input,
+        .add-item-section button {
+            height: 32px;
+            padding: 4px 12px;
+            font-size: 0.9rem;
+        }
+
+        .list-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .item-content {
+            padding: 8px 12px;
+            min-height: auto;
+        }
+
+        .item-name {
+            font-size: 1rem;
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .item-timestamp,
+        .timestamp-price-line .item-timestamp {
+            font-size: 0.75rem;
+            margin: 2px 0;
+        }
+
+        .item-modified {
+            font-size: 0.7rem;
+            margin: 1px 0;
+        }
+
+        .timestamp-price-line {
+            margin-top: 2px;
+        }
+
+        .price-info small {
+            font-size: 0.7rem;
+        }
+
+        .item-price {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+        }
+
+        /* Mobile-specific enhancements */
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .add-item-section input {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+            
+            .item-btn {
+                min-width: 44px; /* iOS touch target minimum */
+                min-height: 44px;
+            }
+            
+            .drag-handle {
+                padding: 10px; /* Larger touch area */
+            }
+            
+            .item-content {
+                gap: 10px;
+            }
+        }
+
+        /* PWA specific styles */
+        @media (display-mode: standalone) {
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+
+        /* Install prompt styles */
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4facfe;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+        }
+
+        .install-prompt button {
+            background: white;
+            color: #4facfe;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 15px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100%); }
+            to { transform: translate(-50%, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-shopping-cart"></i> Smart Shopping List</h1>
+            <p>Organize your shopping with ease</p>
+        </header>
+
+        <div class="template-section">
+            <div class="template-controls">
+                <h3><i class="fas fa-clipboard-check"></i> Templates</h3>
+                <div class="template-buttons">
+                    <select id="templateSelect" class="template-select">
+                        <option value="">Select a template...</option>
+                    </select>
+                    <button id="loadTemplateBtn" class="btn btn-secondary btn-small">
+                        <i class="fas fa-download"></i> Load
+                    </button>
+                    <button id="saveTemplateBtn" class="btn btn-secondary btn-small">
+                        <i class="fas fa-save"></i> Save as Template
+                    </button>
+                </div>
+            </div>
+            <div class="schedule-controls">
+                <label class="schedule-label">
+                    <input type="checkbox" id="enableSchedule"> 
+                    Enable Auto-Refill
+                </label>
+                <select id="scheduleType" class="schedule-select" disabled>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+                <button id="scheduleBtn" class="btn btn-info btn-small" disabled>
+                    <i class="fas fa-calendar"></i> Set Schedule
+                </button>
+            </div>
+        </div>
+
+        <div class="add-item-section">
+            <div class="input-group">
+                <input type="text" id="itemInput" placeholder="Add a new item..." maxlength="100">
+                <button id="addBtn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+                <button id="priceCheckBtn" class="btn btn-success">
+                    <i class="fas fa-pound-sign"></i> Check Prices
+                </button>
+            </div>
+        </div>
+
+        <div class="list-stats">
+            <span id="itemCount">0 items</span>
+            <span id="totalPrice" class="total-price">Total: £0.00</span>
+            <div class="list-actions">
+                <button id="togglePricesBtn" class="btn btn-info btn-small">
+                    <i class="fas fa-eye"></i> Show Prices
+                </button>
+                <button id="clearAllBtn" class="btn btn-danger btn-small">
+                    <i class="fas fa-trash"></i> Clear All
+                </button>
+            </div>
+        </div>
+
+        <div class="shopping-list-container">
+            <ul id="shoppingList" class="shopping-list">
+                <!-- Items will be dynamically added here -->
+            </ul>
+            <div id="emptyState" class="empty-state">
+                <i class="fas fa-clipboard-list"></i>
+                <p>Your shopping list is empty</p>
+                <p class="subtitle">Add some items to get started!</p>
+            </div>
+        </div>
+
+        <!-- Template Save Modal -->
+        <div id="templateModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Save Template</h2>
+                <input type="text" id="templateName" placeholder="Enter template name..." maxlength="50">
+                <div class="modal-actions">
+                    <button id="saveTemplateConfirm" class="btn btn-primary">Save</button>
+                    <button id="cancelTemplate" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Checking prices...</p>
+            </div>
+        </div>
+
+        <!-- Install prompt -->
+        <div id="installPrompt" class="install-prompt">
+            <span>📱 Install app for better experience</span>
+            <button id="installBtn">Install</button>
+            <button id="dismissBtn">×</button>
+        </div>
+    </div>
+
+    <script>
+        console.log('Starting app...');
+        
+        // Simple working version
+        class ShoppingListApp {
+            constructor() {
+                console.log('Initializing...');
+                this.items = [];
+                this.templates = [];
+                this.itemCounter = 0;
+                this.showPrices = false;
+                this.draggedElement = null;
+                
+                // Initialize elements one by one with error checking
+                try {
+                    this.initializeElements();
+                    this.loadFromStorage();
+                    this.bindEvents();
+                    this.updateDisplay();
+                    console.log('App initialized successfully!');
+                } catch (error) {
+                    console.error('Error during initialization:', error);
+                    document.body.innerHTML = '<div style="padding: 20px; background: red; color: white;">Error: ' + error.message + '</div>';
+                }
+            }
+
+            initializeElements() {
+                // Core elements
+                this.itemInput = document.getElementById('itemInput');
+                this.addBtn = document.getElementById('addBtn');
+                this.shoppingList = document.getElementById('shoppingList');
+                this.itemCount = document.getElementById('itemCount');
+                this.emptyState = document.getElementById('emptyState');
+                this.clearAllBtn = document.getElementById('clearAllBtn');
+                
+                // Check if core elements exist
+                if (!this.itemInput) throw new Error('itemInput not found');
+                if (!this.addBtn) throw new Error('addBtn not found');
+                if (!this.shoppingList) throw new Error('shoppingList not found');
+                
+                // Optional elements (don't fail if missing)
+                this.priceCheckBtn = document.getElementById('priceCheckBtn');
+                this.totalPrice = document.getElementById('totalPrice');
+                this.togglePricesBtn = document.getElementById('togglePricesBtn');
+                this.templateSelect = document.getElementById('templateSelect');
+                this.loadTemplateBtn = document.getElementById('loadTemplateBtn');
+                this.saveTemplateBtn = document.getElementById('saveTemplateBtn');
+                this.enableSchedule = document.getElementById('enableSchedule');
+                this.scheduleType = document.getElementById('scheduleType');
+                this.scheduleBtn = document.getElementById('scheduleBtn');
+                this.templateModal = document.getElementById('templateModal');
+                this.templateName = document.getElementById('templateName');
+                this.saveTemplateConfirm = document.getElementById('saveTemplateConfirm');
+                this.cancelTemplate = document.getElementById('cancelTemplate');
+                this.closeModal = document.querySelector('.close');
+                this.loadingOverlay = document.getElementById('loadingOverlay');
+                
+                console.log('Elements initialized');
+            }
+
+            bindEvents() {
+                // Core events
+                this.addBtn.addEventListener('click', () => this.addItem());
+                this.itemInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.addItem();
+                });
+                this.clearAllBtn.addEventListener('click', () => this.clearAllItems());
+                
+                // Optional events
+                if (this.priceCheckBtn) {
+                    this.priceCheckBtn.addEventListener('click', () => this.checkAllPrices());
+                }
+                if (this.togglePricesBtn) {
+                    this.togglePricesBtn.addEventListener('click', () => this.togglePriceDisplay());
+                }
+                if (this.saveTemplateBtn) {
+                    this.saveTemplateBtn.addEventListener('click', () => alert('Save template - coming soon!'));
+                }
+                if (this.loadTemplateBtn) {
+                    this.loadTemplateBtn.addEventListener('click', () => alert('Load template - coming soon!'));
+                }
+                
+                console.log('Events bound');
+            }
+
+            addItem() {
+                const text = this.itemInput.value.trim();
+                if (!text) return;
+
+                const item = {
+                    id: ++this.itemCounter,
+                    text: text,
+                    createdAt: new Date(),
+                    modifiedAt: null,
+                    price: null,
+                    priceOptions: []
+                };
+
+                this.items.push(item);
+                this.itemInput.value = '';
+                this.saveToStorage();
+                this.updateDisplay();
+                this.itemInput.focus();
+                console.log('Item added:', text);
+            }
+
+            editItem(id, newText) {
+                const item = this.items.find(item => item.id === id);
+                if (item && newText.trim() && newText.trim() !== item.text) {
+                    item.text = newText.trim();
+                    item.modifiedAt = new Date();
+                    this.saveToStorage();
+                    this.updateDisplay();
+                }
+            }
+
+            async checkAllPrices() {
+                if (this.items.length === 0) {
+                    alert('Add some items to your list first!');
+                    return;
+                }
+
+                this.showLoading();
+                
+                try {
+                    for (const item of this.items) {
+                        await this.checkItemPrice(item);
+                        await this.delay(500); // Shorter delay for demo
+                    }
+                    this.saveToStorage();
+                    this.updateDisplay();
+                } catch (error) {
+                    console.error('Error checking prices:', error);
+                    alert('Failed to check some prices. Please try again.');
+                } finally {
+                    this.hideLoading();
+                }
+            }
+
+            async checkItemPrice(item) {
+                try {
+                    const mockPrices = await this.getMockPriceData(item.text);
+                    item.price = mockPrices.length > 0 ? mockPrices[0].price : null;
+                    item.priceOptions = mockPrices;
+                } catch (error) {
+                    console.error(`Failed to get price for ${item.text}:`, error);
+                }
+            }
+
+            async getMockPriceData(itemName) {
+                await this.delay(Math.random() * 300 + 100); // Faster loading
+                
+                // Just Aldi prices - simpler and more focused
+                const basePrice = Math.random() * 3 + 0.25; // £0.25-£3.25 for Aldi's low prices
+                
+                return [{
+                    store: 'Aldi',
+                    price: basePrice.toFixed(2),
+                    url: `https://groceries.aldi.co.uk/search?keywords=${encodeURIComponent(itemName)}`
+                }];
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            togglePriceDisplay() {
+                this.showPrices = !this.showPrices;
+                this.togglePricesBtn.innerHTML = this.showPrices ? 
+                    '<i class="fas fa-eye-slash"></i> Hide Prices' : 
+                    '<i class="fas fa-eye"></i> Show Prices';
+                this.saveToStorage();
+                this.updateDisplay();
+            }
+
+            showLoading() {
+                if (this.loadingOverlay) {
+                    this.loadingOverlay.classList.add('active');
+                }
+            }
+
+            hideLoading() {
+                if (this.loadingOverlay) {
+                    this.loadingOverlay.classList.remove('active');
+                }
+            }
+
+            clearAllItems() {
+                if (this.items.length === 0) return;
+                
+                if (confirm('Are you sure you want to clear all items? This action cannot be undone.')) {
+                    this.items = [];
+                    this.saveToStorage();
+                    this.updateDisplay();
+                }
+            }
+
+            updateDisplay() {
+                this.shoppingList.innerHTML = '';
+                
+                if (this.items.length === 0) {
+                    this.emptyState.style.display = 'block';
+                    this.itemCount.textContent = '0 items';
+                    if (this.totalPrice) this.totalPrice.textContent = 'Total: £0.00';
+                } else {
+                    this.emptyState.style.display = 'none';
+                    
+                    this.items.forEach((item, index) => {
+                        this.shoppingList.appendChild(this.createItemElement(item, index));
+                    });
+                    
+                    const count = this.items.length;
+                    this.itemCount.textContent = `${count} item${count !== 1 ? 's' : ''}`;
+                    
+                    // Calculate total price
+                    const total = this.items.reduce((sum, item) => {
+                        return sum + (item.price ? parseFloat(item.price) : 0);
+                    }, 0);
+                    if (this.totalPrice) {
+                        this.totalPrice.textContent = `Total: £${total.toFixed(2)}`;
+                    }
+                }
+                
+                console.log('Display updated, items:', this.items.length);
+            }
+
+            createItemElement(item, index) {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.setAttribute('data-id', item.id);
+                li.draggable = true;
+
+                const modifiedText = item.modifiedAt ? 
+                    `<div class="item-modified">Modified ${this.formatTimestamp(item.modifiedAt)}</div>` : '';
+
+                // Compact layout with timestamp and price on same line
+                const timestampAndPriceHtml = this.showPrices && item.price ? 
+                    `<div class="timestamp-price-line">
+                        <div class="item-timestamp">Added ${this.formatTimestamp(item.createdAt)}</div>
+                        <div class="price-info">
+                            <small><i class="fas fa-store"></i> Aldi Price</small>
+                            <div class="item-price">£${item.price}</div>
+                        </div>
+                    </div>` : 
+                    `<div class="item-timestamp">Added ${this.formatTimestamp(item.createdAt)}</div>`;
+
+                li.innerHTML = `
+                    <div class="item-content">
+                        <div class="drag-handle" title="Drag to reorder">
+                            <i class="fas fa-grip-vertical"></i>
+                        </div>
+                        <div class="item-text">
+                            <input type="text" class="item-edit" value="${this.escapeHtml(item.text)}" maxlength="100">
+                            <div class="item-name">${this.escapeHtml(item.text)}</div>
+                            ${timestampAndPriceHtml}
+                            ${modifiedText}
+                        </div>
+                        <div class="item-actions">
+                            <button class="item-btn edit-btn" title="Edit item">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="item-btn delete-btn" title="Delete item">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="item-btn price-btn" title="Check price">
+                                <i class="fas fa-pound-sign"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                this.bindItemEvents(li, item.id);
+                this.bindDragEvents(li, item.id);
+                return li;
+            }
+
+            bindItemEvents(element, id) {
+                const editBtn = element.querySelector('.edit-btn');
+                const priceBtn = element.querySelector('.price-btn');
+                const editInput = element.querySelector('.item-edit');
+                const itemName = element.querySelector('.item-name');
+                const deleteBtn = element.querySelector('.delete-btn');
+
+                let isEditing = false;
+
+                editBtn.addEventListener('click', () => {
+                    if (!isEditing) {
+                        isEditing = true;
+                        editInput.classList.add('active');
+                        itemName.classList.add('editing');
+                        editInput.focus();
+                        editInput.select();
+                        editBtn.innerHTML = '<i class="fas fa-check"></i>';
+                        editBtn.title = 'Save changes';
+                    } else {
+                        this.saveEdit(id, editInput.value, editInput, itemName, editBtn);
+                        isEditing = false;
+                    }
+                });
+
+                priceBtn.addEventListener('click', async () => {
+                    const item = this.items.find(item => item.id === id);
+                    if (item) {
+                        this.showLoading();
+                        await this.checkItemPrice(item);
+                        this.hideLoading();
+                        this.saveToStorage();
+                        this.updateDisplay();
+                    }
+                });
+
+                editInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.saveEdit(id, editInput.value, editInput, itemName, editBtn);
+                        isEditing = false;
+                    }
+                });
+
+                editInput.addEventListener('blur', () => {
+                    if (isEditing) {
+                        this.saveEdit(id, editInput.value, editInput, itemName, editBtn);
+                        isEditing = false;
+                    }
+                });
+
+                deleteBtn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to delete this item?')) {
+                        this.deleteItem(id);
+                    }
+                });
+            }
+
+            bindDragEvents(element, id) {
+                element.addEventListener('dragstart', (e) => {
+                    this.draggedElement = element;
+                    element.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', element.outerHTML);
+                });
+
+                element.addEventListener('dragend', (e) => {
+                    element.classList.remove('dragging');
+                    this.draggedElement = null;
+                    // Clean up any drag-over classes
+                    document.querySelectorAll('.drag-over').forEach(el => {
+                        el.classList.remove('drag-over');
+                    });
+                });
+
+                element.addEventListener('dragover', (e) => {
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                    e.dataTransfer.dropEffect = 'move';
+                    
+                    if (this.draggedElement && this.draggedElement !== element) {
+                        element.classList.add('drag-over');
+                    }
+                    return false;
+                });
+
+                element.addEventListener('dragenter', (e) => {
+                    if (this.draggedElement && this.draggedElement !== element) {
+                        element.classList.add('drag-over');
+                    }
+                });
+
+                element.addEventListener('dragleave', (e) => {
+                    element.classList.remove('drag-over');
+                });
+
+                element.addEventListener('drop', (e) => {
+                    if (e.stopPropagation) {
+                        e.stopPropagation();
+                    }
+
+                    if (this.draggedElement && this.draggedElement !== element) {
+                        const draggedId = parseInt(this.draggedElement.getAttribute('data-id'));
+                        const targetId = parseInt(element.getAttribute('data-id'));
+                        this.moveItemToPosition(draggedId, targetId);
+                    }
+
+                    element.classList.remove('drag-over');
+                    return false;
+                });
+            }
+
+            moveItemToPosition(draggedId, targetId) {
+                const draggedIndex = this.items.findIndex(item => item.id === draggedId);
+                const targetIndex = this.items.findIndex(item => item.id === targetId);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
+                    // Remove the dragged item
+                    const draggedItem = this.items.splice(draggedIndex, 1)[0];
+                    
+                    // Insert it at the target position
+                    this.items.splice(targetIndex, 0, draggedItem);
+                    
+                    this.saveToStorage();
+                    this.updateDisplay();
+                }
+            }
+
+            saveEdit(id, newText, editInput, itemName, editBtn) {
+                this.editItem(id, newText);
+                editInput.classList.remove('active');
+                itemName.classList.remove('editing');
+                editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                editBtn.title = 'Edit item';
+            }
+
+            deleteItem(id) {
+                this.items = this.items.filter(item => item.id !== id);
+                this.saveToStorage();
+                this.updateDisplay();
+            }
+
+            saveToStorage() {
+                try {
+                    localStorage.setItem('shoppingListItems', JSON.stringify(this.items));
+                    localStorage.setItem('shoppingListCounter', this.itemCounter.toString());
+                    localStorage.setItem('shoppingListShowPrices', this.showPrices.toString());
+                } catch (error) {
+                    console.error('Failed to save to localStorage:', error);
+                }
+            }
+
+            loadFromStorage() {
+                try {
+                    const savedItems = localStorage.getItem('shoppingListItems');
+                    const savedCounter = localStorage.getItem('shoppingListCounter');
+                    const savedShowPrices = localStorage.getItem('shoppingListShowPrices');
+                    
+                    if (savedItems) {
+                        this.items = JSON.parse(savedItems).map(item => ({
+                            ...item,
+                            createdAt: new Date(item.createdAt),
+                            modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : null,
+                            price: item.price || null,
+                            priceOptions: item.priceOptions || []
+                        }));
+                    }
+                    
+                    if (savedCounter) {
+                        this.itemCounter = parseInt(savedCounter, 10);
+                    }
+                    
+                    if (savedShowPrices) {
+                        this.showPrices = savedShowPrices === 'true';
+                        if (this.togglePricesBtn) {
+                            this.togglePricesBtn.innerHTML = this.showPrices ? 
+                                '<i class="fas fa-eye-slash"></i> Hide Prices' : 
+                                '<i class="fas fa-eye"></i> Show Prices';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load from localStorage:', error);
+                    this.items = [];
+                    this.itemCounter = 0;
+                    this.showPrices = false;
+                }
+            }
+
+            formatTimestamp(date) {
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                const diffDays = Math.floor(diffHours / 24);
+
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+                if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+                if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+                
+                return date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // Global variable for debugging
+        let app;
+
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, starting app...');
+            try {
+                app = new ShoppingListApp();
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                document.body.innerHTML = `
+                    <div style="padding: 20px; background: #ff6b6b; color: white; margin: 20px; border-radius: 10px;">
+                        <h2>Error Loading App</h2>
+                        <p>Error: ${error.message}</p>
+                        <p>Check the browser console for more details.</p>
+                    </div>
+                `;
+            }
+        });
+        
+        console.log('Script loaded successfully');
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+        const dismissBtn = document.getElementById('dismissBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show install prompt after 3 seconds
+            setTimeout(() => {
+                if (!window.matchMedia('(display-mode: standalone)').matches) {
+                    installPrompt.style.display = 'block';
+                }
+            }, 3000);
+        });
+
+        installBtn.addEventListener('click', () => {
+            installPrompt.style.display = 'none';
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+
+        dismissBtn.addEventListener('click', () => {
+            installPrompt.style.display = 'none';
+        });
+
+        // Hide install prompt if already installed
+        window.addEventListener('appinstalled', () => {
+            installPrompt.style.display = 'none';
+            console.log('PWA was installed');
+        });
+
+        // Prevent zoom on double tap (iOS)
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <canvas id="canvas" width="512" height="512" style="border: 1px solid #ccc;"></canvas>
+    <br><br>
+    <button onclick="downloadIcon(72)">Download 72x72</button>
+    <button onclick="downloadIcon(96)">Download 96x96</button>
+    <button onclick="downloadIcon(128)">Download 128x128</button>
+    <button onclick="downloadIcon(144)">Download 144x144</button>
+    <button onclick="downloadIcon(152)">Download 152x152</button>
+    <button onclick="downloadIcon(192)">Download 192x192</button>
+    <button onclick="downloadIcon(384)">Download 384x384</button>
+    <button onclick="downloadIcon(512)">Download 512x512</button>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Create a shopping cart icon
+        function drawIcon() {
+            // Clear canvas
+            ctx.clearRect(0, 0, 512, 512);
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+            gradient.addColorStop(0, '#4facfe');
+            gradient.addColorStop(1, '#00f2fe');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // Shopping cart icon
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 20;
+            
+            // Cart body
+            ctx.beginPath();
+            ctx.roundRect(120, 180, 280, 200, 20);
+            ctx.fill();
+            
+            // Cart handle
+            ctx.beginPath();
+            ctx.arc(100, 200, 30, 0, Math.PI * 1.5);
+            ctx.stroke();
+            
+            // Cart wheels
+            ctx.beginPath();
+            ctx.arc(180, 420, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(320, 420, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Items in cart
+            ctx.fillStyle = '#ff6b6b';
+            ctx.fillRect(140, 200, 40, 60);
+            ctx.fillRect(200, 210, 40, 50);
+            ctx.fillRect(260, 190, 40, 70);
+            ctx.fillRect(320, 205, 40, 55);
+        }
+
+        function downloadIcon(size) {
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = size;
+            tempCanvas.height = size;
+            
+            tempCtx.drawImage(canvas, 0, 0, size, size);
+            
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = tempCanvas.toDataURL();
+            link.click();
+        }
+
+        // Draw the icon when page loads
+        drawIcon();
+    </script>
+</body>
+</html>

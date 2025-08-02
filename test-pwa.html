@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Installation Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🛒 Shopping List PWA Test</h1>
+        
+        <div id="sw-status" class="status info">
+            Checking Service Worker status...
+        </div>
+        
+        <div id="install-section">
+            <p>This will test if your shopping list app can work offline.</p>
+            <button id="install-btn" class="hidden">📱 Install App</button>
+            <button onclick="location.href='working.html'">🛒 Open Shopping List</button>
+        </div>
+        
+        <div id="offline-test" class="hidden">
+            <h3>Offline Test</h3>
+            <p>Turn off your WiFi or close the server, then click:</p>
+            <button onclick="testOffline()">🔌 Test Offline Mode</button>
+            <div id="offline-result"></div>
+        </div>
+    </div>
+
+    <script>
+        let deferredPrompt;
+
+        // Check if service worker is supported
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(registration => {
+                    console.log('SW registered:', registration);
+                    document.getElementById('sw-status').innerHTML = '✅ Service Worker registered successfully!';
+                    document.getElementById('sw-status').className = 'status success';
+                    document.getElementById('offline-test').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.log('SW registration failed:', error);
+                    document.getElementById('sw-status').innerHTML = '❌ Service Worker failed to register';
+                    document.getElementById('sw-status').className = 'status error';
+                });
+        } else {
+            document.getElementById('sw-status').innerHTML = '❌ Service Worker not supported';
+            document.getElementById('sw-status').className = 'status error';
+        }
+
+        // Listen for install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-btn').classList.remove('hidden');
+        });
+
+        // Install button click
+        document.getElementById('install-btn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response: ${outcome}`);
+                deferredPrompt = null;
+                document.getElementById('install-btn').classList.add('hidden');
+            }
+        });
+
+        // Test offline functionality
+        function testOffline() {
+            fetch('./working.html')
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('offline-result').innerHTML = 
+                            '<div class="status success">✅ App works offline! Your shopping list is cached.</div>';
+                    } else {
+                        document.getElementById('offline-result').innerHTML = 
+                            '<div class="status error">❌ Failed to load from cache</div>';
+                    }
+                })
+                .catch(error => {
+                    // This should still work if properly cached
+                    document.getElementById('offline-result').innerHTML = 
+                        '<div class="status info">🔌 Network unavailable - checking cache...</div>';
+                });
+        }
+    </script>
+</body>
+</html>
