@@ -138,6 +138,17 @@
             background: #f8f9fa;
             border-radius: 8px;
             border-left: 3px solid #4facfe;
+            display: none;
+        }
+
+        .price-suggestions.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .price-suggestions h5 {
@@ -162,6 +173,13 @@
             border-bottom: none;
         }
 
+        .price-option.cheapest {
+            background: #d4edda;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
         .store-name {
             color: #6c757d;
             font-weight: 500;
@@ -170,6 +188,16 @@
         .store-price {
             color: #28a745;
             font-weight: 600;
+        }
+
+        .price-toggle {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .price-toggle:hover {
+            background: #e8f5e8;
+            border-radius: 4px;
         }
 
         .item-modified {
@@ -231,26 +259,10 @@
         }
 
         .add-item-section input,
-        .add-item-section button,
-        .add-item-section select {
+        .add-item-section button {
             height: 32px;
             padding: 4px 12px;
             font-size: 0.9rem;
-        }
-
-        .shop-selector {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            color: #495057;
-            cursor: pointer;
-            min-width: 120px;
-        }
-
-        .shop-selector:focus {
-            outline: none;
-            border-color: #4facfe;
-            box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.2);
         }
 
         .list-item {
@@ -400,16 +412,6 @@
                 <button id="addBtn" class="btn btn-primary">
                     <i class="fas fa-plus"></i> Add Item
                 </button>
-                <select id="shopSelector" class="shop-selector">
-                    <option value="all">All Shops</option>
-                    <option value="tesco">Tesco</option>
-                    <option value="asda">ASDA</option>
-                    <option value="sainsburys">Sainsbury's</option>
-                    <option value="aldi">Aldi</option>
-                    <option value="bm">B&M</option>
-                    <option value="homebargains">Home Bargains</option>
-                    <option value="primark">Primark</option>
-                </select>
                 <button id="priceCheckBtn" class="btn btn-success">
                     <i class="fas fa-pound-sign"></i> Check Prices
                 </button>
@@ -513,7 +515,6 @@
                 this.priceCheckBtn = document.getElementById('priceCheckBtn');
                 this.totalPrice = document.getElementById('totalPrice');
                 this.togglePricesBtn = document.getElementById('togglePricesBtn');
-                this.shopSelector = document.getElementById('shopSelector');
                 this.templateSelect = document.getElementById('templateSelect');
                 this.loadTemplateBtn = document.getElementById('loadTemplateBtn');
                 this.saveTemplateBtn = document.getElementById('saveTemplateBtn');
@@ -551,6 +552,15 @@
                 if (this.loadTemplateBtn) {
                     this.loadTemplateBtn.addEventListener('click', () => alert('Load template - coming soon!'));
                 }
+                
+                // Click outside to close price comparisons
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.price-suggestions') && !e.target.closest('.price-toggle')) {
+                        document.querySelectorAll('.price-suggestions.show').forEach(el => {
+                            el.classList.remove('show');
+                        });
+                    }
+                });
                 
                 console.log('Events bound');
             }
@@ -611,17 +621,15 @@
 
             async checkItemPrice(item) {
                 try {
-                    const estimatedPrices = await this.getMockPriceData(item.text);
-                    item.price = estimatedPrices.length > 0 ? estimatedPrices[0].price : null;
-                    item.priceOptions = estimatedPrices;
+                    const mockPrices = await this.getMockPriceData(item.text);
+                    item.price = mockPrices.length > 0 ? mockPrices[0].price : null;
+                    item.priceOptions = mockPrices;
                 } catch (error) {
                     console.error(`Failed to get price for ${item.text}:`, error);
                 }
             }
 
             async getMockPriceData(itemName) {
-                const selectedShop = document.getElementById('shopSelector')?.value || 'all';
-                
                 // Add realistic delay
                 await this.delay(Math.random() * 400 + 200);
                 
@@ -684,39 +692,23 @@
                 let basePrice = itemCategories[itemKey]?.base || this.estimatePriceFromName(itemName);
                 
                 const results = [];
+                const shopsToShow = ['aldi', 'asda', 'tesco', 'sainsburys'];
                 
-                if (selectedShop === 'all') {
-                    // Show prices from multiple shops
-                    const shopsToShow = ['aldi', 'asda', 'tesco', 'sainsburys'];
-                    
-                    for (const shopKey of shopsToShow) {
-                        const config = shopConfigs[shopKey];
-                        if (config) {
-                            const estimatedPrice = this.calculateShopPrice(basePrice, config);
-                            results.push({
-                                store: config.name,
-                                price: estimatedPrice.toFixed(2),
-                                url: this.getShopUrl(shopKey, itemName),
-                                estimate: true
-                            });
-                        }
-                    }
-                } else {
-                    // Show price from selected shop
-                    const config = shopConfigs[selectedShop];
+                for (const shopKey of shopsToShow) {
+                    const config = shopConfigs[shopKey];
                     if (config) {
                         const estimatedPrice = this.calculateShopPrice(basePrice, config);
                         results.push({
                             store: config.name,
                             price: estimatedPrice.toFixed(2),
-                            url: this.getShopUrl(selectedShop, itemName),
+                            url: this.getShopUrl(shopKey, itemName),
                             estimate: true
                         });
                     }
                 }
 
-                // Sort by price (cheapest first)
-                return results.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+                // Sort by price (cheapest first) and return only top 3-4
+                return results.sort((a, b) => parseFloat(a.price) - parseFloat(b.price)).slice(0, 4);
             }
 
             estimatePriceFromName(itemName) {
@@ -850,10 +842,11 @@
                     `<div class="timestamp-price-line">
                         <div class="item-timestamp">Added ${this.formatTimestamp(item.createdAt)}</div>
                         <div class="price-info">
-                            <small><i class="fas fa-tag"></i> Best Price</small>
-                            <div class="item-price">£${item.price}</div>
+                            <small><i class="fas fa-store"></i> Best Price</small>
+                            <div class="item-price price-toggle" title="Click to see all prices">£${item.price}</div>
                         </div>
-                    </div>` : 
+                    </div>
+                    ${this.generatePriceComparison(item)}` : 
                     `<div class="item-timestamp">Added ${this.formatTimestamp(item.createdAt)}</div>`;
 
                 li.innerHTML = `
@@ -886,14 +879,54 @@
                 return li;
             }
 
+            generatePriceComparison(item) {
+                if (!item.priceOptions || item.priceOptions.length <= 1) return '';
+                
+                const priceOptionsHtml = item.priceOptions.map((option, index) => {
+                    const cheapestClass = index === 0 ? 'cheapest' : '';
+                    return `
+                        <div class="price-option ${cheapestClass}">
+                            <span class="store-name">${option.store}</span>
+                            <span class="store-price">£${option.price}</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                return `
+                    <div class="price-suggestions" data-item-id="${item.id}">
+                        <h5><i class="fas fa-chart-line"></i> Price Comparison</h5>
+                        ${priceOptionsHtml}
+                    </div>
+                `;
+            }
+
             bindItemEvents(element, id) {
                 const editBtn = element.querySelector('.edit-btn');
                 const priceBtn = element.querySelector('.price-btn');
                 const editInput = element.querySelector('.item-edit');
                 const itemName = element.querySelector('.item-name');
                 const deleteBtn = element.querySelector('.delete-btn');
+                const priceToggle = element.querySelector('.price-toggle');
+                const priceSuggestions = element.querySelector('.price-suggestions');
 
                 let isEditing = false;
+
+                // Price toggle functionality
+                if (priceToggle && priceSuggestions) {
+                    priceToggle.addEventListener('click', () => {
+                        const isVisible = priceSuggestions.classList.contains('show');
+                        
+                        // Hide all other price suggestions first
+                        document.querySelectorAll('.price-suggestions.show').forEach(el => {
+                            el.classList.remove('show');
+                        });
+                        
+                        // Toggle current one
+                        if (!isVisible) {
+                            priceSuggestions.classList.add('show');
+                        }
+                    });
+                }
 
                 editBtn.addEventListener('click', () => {
                     if (!isEditing) {
