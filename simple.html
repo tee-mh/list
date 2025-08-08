@@ -109,6 +109,158 @@
             border-left: 4px solid #007bff;
             font-family: monospace;
         }
+
+        .store-category {
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .store-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .store-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+
+        .store-items {
+            background: white;
+        }
+
+        .list-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f3f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: background-color 0.2s ease;
+        }
+
+        .list-item:hover {
+            background: #f8f9fa;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-content {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+
+        .item-details {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .item-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .item-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
+        .move-btn {
+            background: #28a745;
+        }
+
+        .move-btn:hover {
+            background: #218838;
+        }
+
+        .categories-view {
+            display: none;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .category-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .category-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            border-color: #4facfe;
+        }
+
+        .category-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .category-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .category-count {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .category-empty {
+            opacity: 0.6;
+        }
+
+        .view-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -125,14 +277,54 @@
         <div class="add-item-section">
             <div class="input-group">
                 <input type="text" id="itemInput" placeholder="Add a new item..." maxlength="100">
+                <select id="storeSelector" style="padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 1rem; margin-right: 10px; min-width: 150px;">
+                    <option value="grocery">🛒 Grocery Store</option>
+                    <option value="tesco">🏪 Tesco</option>
+                    <option value="asda">🏪 ASDA</option>
+                    <option value="sainsburys">🏪 Sainsbury's</option>
+                    <option value="aldi">🏪 Aldi</option>
+                    <option value="lidl">🏪 Lidl</option>
+                    <option value="morrisons">🏪 Morrisons</option>
+                    <option value="pharmacy">💊 Pharmacy</option>
+                    <option value="hardware">🔧 Hardware Store</option>
+                    <option value="clothing">👕 Clothing Store</option>
+                    <option value="electronics">📱 Electronics</option>
+                    <option value="other">📦 Other</option>
+                </select>
                 <button id="addBtn" class="btn">
                     <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+            <div style="margin-top: 15px;">
+                <label style="margin-right: 15px;">
+                    <input type="checkbox" id="groupByStore" checked> Group by Store
+                </label>
+                <button id="clearAllBtn" class="btn" style="background: #dc3545; font-size: 0.9rem; padding: 8px 16px;">
+                    <i class="fas fa-trash"></i> Clear All
                 </button>
             </div>
         </div>
 
         <div class="list-stats">
             <span id="itemCount">0 items</span>
+            <div style="margin-top: 10px;">
+                <button id="viewAllBtn" class="btn" style="background: #28a745; font-size: 0.9rem; padding: 8px 16px; margin-right: 10px;">
+                    <i class="fas fa-list"></i> View All Items
+                </button>
+                <button id="viewCategoriesBtn" class="btn" style="background: #17a2b8; font-size: 0.9rem; padding: 8px 16px;">
+                    <i class="fas fa-store"></i> View Categories
+                </button>
+            </div>
+        </div>
+
+        <div id="categoriesView" class="categories-view">
+            <div class="view-toggle">
+                <h3><i class="fas fa-store"></i> Store Categories Overview</h3>
+                <p>Click on any store category to see its items</p>
+            </div>
+            <div id="categoriesGrid" class="categories-grid">
+                <!-- Categories will be dynamically added here -->
+            </div>
         </div>
 
         <div class="shopping-list-container">
@@ -155,6 +347,7 @@
                 console.log('Constructor called');
                 this.items = [];
                 this.itemCounter = 0;
+                this.currentView = 'items'; // 'items' or 'categories'
                 this.initializeElements();
                 this.bindEvents();
                 this.updateDisplay();
@@ -169,6 +362,13 @@
                 this.itemCount = document.getElementById('itemCount');
                 this.emptyState = document.getElementById('emptyState');
                 this.statusElement = document.getElementById('status');
+                this.storeSelector = document.getElementById('storeSelector');
+                this.groupByStore = document.getElementById('groupByStore');
+                this.clearAllBtn = document.getElementById('clearAllBtn');
+                this.viewAllBtn = document.getElementById('viewAllBtn');
+                this.viewCategoriesBtn = document.getElementById('viewCategoriesBtn');
+                this.categoriesView = document.getElementById('categoriesView');
+                this.categoriesGrid = document.getElementById('categoriesGrid');
                 
                 if (!this.itemInput) console.error('itemInput not found');
                 if (!this.addBtn) console.error('addBtn not found');
@@ -189,6 +389,28 @@
                         this.addItem();
                     }
                 });
+
+                this.clearAllBtn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to clear all items?')) {
+                        this.items = [];
+                        this.updateDisplay();
+                        this.statusElement.textContent = 'All items cleared!';
+                    }
+                });
+
+                this.groupByStore.addEventListener('change', () => {
+                    this.updateDisplay();
+                });
+
+                this.viewAllBtn.addEventListener('click', () => {
+                    this.currentView = 'items';
+                    this.updateDisplay();
+                });
+
+                this.viewCategoriesBtn.addEventListener('click', () => {
+                    this.currentView = 'categories';
+                    this.updateDisplay();
+                });
                 
                 this.statusElement.textContent = 'Events bound!';
             }
@@ -196,6 +418,8 @@
             addItem() {
                 console.log('Adding item...');
                 const text = this.itemInput.value.trim();
+                const store = this.storeSelector.value;
+                
                 if (!text) {
                     alert('Please enter an item name');
                     return;
@@ -204,6 +428,7 @@
                 const item = {
                     id: ++this.itemCounter,
                     text: text,
+                    store: store,
                     createdAt: new Date()
                 };
 
@@ -213,34 +438,222 @@
                 this.itemInput.focus();
                 
                 console.log('Item added:', item);
-                this.statusElement.textContent = `Added: ${text}`;
+                this.statusElement.textContent = `Added: ${text} to ${this.getStoreName(store)}`;
             }
 
             updateDisplay() {
                 console.log('Updating display, items:', this.items.length);
+                
+                // Update item count
+                const count = this.items.length;
+                this.itemCount.textContent = `${count} item${count !== 1 ? 's' : ''}`;
+                
+                if (this.currentView === 'categories') {
+                    this.showCategoriesView();
+                } else {
+                    this.showItemsView();
+                }
+            }
+
+            showItemsView() {
+                this.categoriesView.style.display = 'none';
+                this.shoppingList.parentElement.style.display = 'block';
                 this.shoppingList.innerHTML = '';
+                
+                // Update button states
+                this.viewAllBtn.style.background = '#28a745';
+                this.viewCategoriesBtn.style.background = '#17a2b8';
                 
                 if (this.items.length === 0) {
                     this.emptyState.style.display = 'block';
-                    this.itemCount.textContent = '0 items';
                 } else {
                     this.emptyState.style.display = 'none';
                     
-                    this.items.forEach((item) => {
-                        const li = document.createElement('li');
-                        li.className = 'list-item';
-                        li.innerHTML = `
-                            <div>
-                                <strong>${this.escapeHtml(item.text)}</strong>
-                                <br><small>Added: ${item.createdAt.toLocaleString()}</small>
-                                <button onclick="app.deleteItem(${item.id})" style="float: right; background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Delete</button>
+                    if (this.groupByStore.checked) {
+                        this.displayGroupedByStore();
+                    } else {
+                        this.displayUngrouped();
+                    }
+                }
+            }
+
+            showCategoriesView() {
+                this.categoriesView.style.display = 'block';
+                this.shoppingList.parentElement.style.display = 'none';
+                
+                // Update button states
+                this.viewAllBtn.style.background = '#6c757d';
+                this.viewCategoriesBtn.style.background = '#17a2b8';
+                
+                this.displayCategoriesGrid();
+            }
+
+            displayCategoriesGrid() {
+                this.categoriesGrid.innerHTML = '';
+                
+                const allStores = [
+                    'grocery', 'tesco', 'asda', 'sainsburys', 'aldi', 'lidl', 
+                    'morrisons', 'pharmacy', 'hardware', 'clothing', 'electronics', 'other'
+                ];
+                
+                // Count items per store
+                const storeCounts = {};
+                this.items.forEach(item => {
+                    storeCounts[item.store] = (storeCounts[item.store] || 0) + 1;
+                });
+                
+                allStores.forEach(storeKey => {
+                    const count = storeCounts[storeKey] || 0;
+                    const storeName = this.getStoreName(storeKey);
+                    const [emoji, name] = storeName.split(' ', 2);
+                    const remainingName = storeName.substring(storeName.indexOf(' ') + 1);
+                    
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = `category-card ${count === 0 ? 'category-empty' : ''}`;
+                    cardDiv.onclick = () => this.showCategoryItems(storeKey);
+                    
+                    cardDiv.innerHTML = `
+                        <span class="category-icon">${emoji}</span>
+                        <div class="category-name">${remainingName}</div>
+                        <div class="category-count">${count} item${count !== 1 ? 's' : ''}</div>
+                    `;
+                    
+                    this.categoriesGrid.appendChild(cardDiv);
+                });
+            }
+
+            showCategoryItems(storeKey) {
+                const storeItems = this.items.filter(item => item.store === storeKey);
+                const storeName = this.getStoreName(storeKey);
+                
+                if (storeItems.length === 0) {
+                    alert(`No items in ${storeName}`);
+                    return;
+                }
+                
+                let itemsList = storeItems.map(item => 
+                    `• ${item.text} (Added: ${item.createdAt.toLocaleDateString()})`
+                ).join('\n');
+                
+                alert(`Items in ${storeName}:\n\n${itemsList}\n\nTotal: ${storeItems.length} item${storeItems.length !== 1 ? 's' : ''}`);
+            }
+
+            displayGroupedByStore() {
+                // Group items by store
+                const groupedItems = {};
+                this.items.forEach(item => {
+                    if (!groupedItems[item.store]) {
+                        groupedItems[item.store] = [];
+                    }
+                    groupedItems[item.store].push(item);
+                });
+
+                // Display each store group
+                Object.keys(groupedItems).forEach(storeKey => {
+                    const storeItems = groupedItems[storeKey];
+                    const storeName = this.getStoreName(storeKey);
+                    
+                    // Create store category container
+                    const storeDiv = document.createElement('div');
+                    storeDiv.className = 'store-category';
+                    
+                    // Store header
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'store-header';
+                    headerDiv.innerHTML = `
+                        <span>${storeName}</span>
+                        <span class="store-count">${storeItems.length} item${storeItems.length !== 1 ? 's' : ''}</span>
+                    `;
+                    storeDiv.appendChild(headerDiv);
+                    
+                    // Store items container
+                    const itemsDiv = document.createElement('div');
+                    itemsDiv.className = 'store-items';
+                    
+                    storeItems.forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'list-item';
+                        itemDiv.innerHTML = `
+                            <div class="item-content">
+                                <div class="item-name">${this.escapeHtml(item.text)}</div>
+                                <div class="item-details">Added: ${item.createdAt.toLocaleString()}</div>
+                            </div>
+                            <div class="item-actions">
+                                <button class="item-btn move-btn" onclick="app.moveItem(${item.id})">Move</button>
+                                <button class="item-btn" onclick="app.deleteItem(${item.id})">Delete</button>
                             </div>
                         `;
-                        this.shoppingList.appendChild(li);
+                        itemsDiv.appendChild(itemDiv);
                     });
                     
-                    const count = this.items.length;
-                    this.itemCount.textContent = `${count} item${count !== 1 ? 's' : ''}`;
+                    storeDiv.appendChild(itemsDiv);
+                    this.shoppingList.appendChild(storeDiv);
+                });
+            }
+
+            displayUngrouped() {
+                this.items.forEach((item) => {
+                    const li = document.createElement('li');
+                    li.className = 'list-item';
+                    li.innerHTML = `
+                        <div class="item-content">
+                            <div class="item-name">${this.escapeHtml(item.text)}</div>
+                            <div class="item-details">
+                                Store: ${this.getStoreName(item.store)} | Added: ${item.createdAt.toLocaleString()}
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="item-btn move-btn" onclick="app.moveItem(${item.id})">Move</button>
+                            <button class="item-btn" onclick="app.deleteItem(${item.id})">Delete</button>
+                        </div>
+                    `;
+                    this.shoppingList.appendChild(li);
+                });
+            }
+
+            getStoreName(storeKey) {
+                const storeNames = {
+                    'grocery': '🛒 Grocery Store',
+                    'tesco': '🏪 Tesco',
+                    'asda': '🏪 ASDA',
+                    'sainsburys': '🏪 Sainsbury\'s',
+                    'aldi': '🏪 Aldi',
+                    'lidl': '🏪 Lidl',
+                    'morrisons': '🏪 Morrisons',
+                    'pharmacy': '💊 Pharmacy',
+                    'hardware': '🔧 Hardware Store',
+                    'clothing': '👕 Clothing Store',
+                    'electronics': '📱 Electronics',
+                    'other': '📦 Other'
+                };
+                return storeNames[storeKey] || storeKey;
+            }
+
+            moveItem(id) {
+                const item = this.items.find(item => item.id === id);
+                if (!item) return;
+
+                const storeOptions = `
+                    <option value="grocery">🛒 Grocery Store</option>
+                    <option value="tesco">🏪 Tesco</option>
+                    <option value="asda">🏪 ASDA</option>
+                    <option value="sainsburys">🏪 Sainsbury's</option>
+                    <option value="aldi">🏪 Aldi</option>
+                    <option value="lidl">🏪 Lidl</option>
+                    <option value="morrisons">🏪 Morrisons</option>
+                    <option value="pharmacy">💊 Pharmacy</option>
+                    <option value="hardware">🔧 Hardware Store</option>
+                    <option value="clothing">👕 Clothing Store</option>
+                    <option value="electronics">📱 Electronics</option>
+                    <option value="other">📦 Other</option>
+                `;
+
+                const newStore = prompt(`Move "${item.text}" to which store?\n\nCurrent: ${this.getStoreName(item.store)}\n\nEnter store key (grocery, tesco, asda, sainsburys, aldi, lidl, morrisons, pharmacy, hardware, clothing, electronics, other):`);
+                
+                if (newStore && newStore !== item.store) {
+                    item.store = newStore;
+                    this.updateDisplay();
+                    this.statusElement.textContent = `Moved "${item.text}" to ${this.getStoreName(newStore)}`;
                 }
             }
 

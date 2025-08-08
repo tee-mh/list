@@ -630,138 +630,30 @@
             }
 
             async getMockPriceData(itemName) {
-                // Add realistic delay
-                await this.delay(Math.random() * 400 + 200);
+                await this.delay(Math.random() * 300 + 100); // Faster loading
                 
-                // UK shop configurations with realistic price ranges
-                const shopConfigs = {
-                    tesco: { name: 'Tesco', minPrice: 0.35, maxPrice: 4.50, multiplier: 1.0 },
-                    asda: { name: 'ASDA', minPrice: 0.30, maxPrice: 4.00, multiplier: 0.95 },
-                    sainsburys: { name: 'Sainsbury\'s', minPrice: 0.40, maxPrice: 5.00, multiplier: 1.05 },
-                    aldi: { name: 'Aldi', minPrice: 0.25, maxPrice: 3.25, multiplier: 0.85 },
-                    bm: { name: 'B&M', minPrice: 0.50, maxPrice: 3.50, multiplier: 0.90 },
-                    homebargains: { name: 'Home Bargains', minPrice: 0.20, maxPrice: 2.75, multiplier: 0.80 },
-                    primark: { name: 'Primark', minPrice: 1.00, maxPrice: 8.00, multiplier: 1.20 }
-                };
-
-                // Item-specific pricing adjustments
-                const itemCategories = {
-                    // Dairy & Fresh
-                    milk: { base: 1.20, category: 'dairy' },
-                    bread: { base: 0.80, category: 'bakery' },
-                    eggs: { base: 1.50, category: 'dairy' },
-                    butter: { base: 2.00, category: 'dairy' },
-                    cheese: { base: 2.50, category: 'dairy' },
-                    yogurt: { base: 1.80, category: 'dairy' },
-                    
-                    // Meat & Fish
-                    chicken: { base: 3.50, category: 'meat' },
-                    beef: { base: 5.00, category: 'meat' },
-                    pork: { base: 4.00, category: 'meat' },
-                    fish: { base: 4.50, category: 'meat' },
-                    salmon: { base: 5.50, category: 'meat' },
-                    
-                    // Vegetables & Fruit
-                    bananas: { base: 1.10, category: 'produce' },
-                    apples: { base: 1.50, category: 'produce' },
-                    potatoes: { base: 1.00, category: 'produce' },
-                    onions: { base: 0.90, category: 'produce' },
-                    carrots: { base: 0.70, category: 'produce' },
-                    tomatoes: { base: 1.80, category: 'produce' },
-                    
-                    // Pantry Items
-                    rice: { base: 2.00, category: 'pantry' },
-                    pasta: { base: 1.20, category: 'pantry' },
-                    flour: { base: 1.50, category: 'pantry' },
-                    sugar: { base: 1.30, category: 'pantry' },
-                    oil: { base: 2.50, category: 'pantry' },
-                    
-                    // Household
-                    soap: { base: 1.50, category: 'household' },
-                    shampoo: { base: 3.00, category: 'household' },
-                    toothpaste: { base: 2.50, category: 'household' },
-                    
-                    // Snacks & Treats
-                    chocolate: { base: 2.00, category: 'snacks' },
-                    crisps: { base: 1.50, category: 'snacks' },
-                    biscuits: { base: 1.80, category: 'snacks' }
-                };
-
-                // Get base price for item
-                const itemKey = itemName.toLowerCase().trim();
-                let basePrice = itemCategories[itemKey]?.base || this.estimatePriceFromName(itemName);
+                // UK shops with realistic price ranges
+                const shops = [
+                    { name: 'Aldi', min: 0.25, max: 3.25, url: 'https://groceries.aldi.co.uk/search?keywords=' },
+                    { name: 'Tesco', min: 0.35, max: 4.50, url: 'https://www.tesco.com/groceries/en-GB/search?query=' },
+                    { name: 'ASDA', min: 0.30, max: 4.00, url: 'https://groceries.asda.com/search/' },
+                    { name: 'Sainsbury\'s', min: 0.40, max: 5.00, url: 'https://www.sainsburys.co.uk/gol-ui/SearchResults/' },
+                    { name: 'B&M', min: 0.50, max: 3.50, url: 'https://www.bmstores.co.uk/search?q=' },
+                    { name: 'Home Bargains', min: 0.20, max: 2.75, url: 'https://www.homebargains.co.uk/search?q=' },
+                    { name: 'Primark', min: 1.00, max: 8.00, url: 'https://www.primark.com/en-gb/search?q=' }
+                ];
                 
-                const results = [];
-                const shopsToShow = ['aldi', 'asda', 'tesco', 'sainsburys'];
+                // Generate prices for 3-4 random shops to keep it clean
+                const selectedShops = shops.sort(() => Math.random() - 0.5).slice(0, Math.floor(Math.random() * 2) + 3);
                 
-                for (const shopKey of shopsToShow) {
-                    const config = shopConfigs[shopKey];
-                    if (config) {
-                        const estimatedPrice = this.calculateShopPrice(basePrice, config);
-                        results.push({
-                            store: config.name,
-                            price: estimatedPrice.toFixed(2),
-                            url: this.getShopUrl(shopKey, itemName),
-                            estimate: true
-                        });
-                    }
-                }
-
-                // Sort by price (cheapest first) and return only top 3-4
-                return results.sort((a, b) => parseFloat(a.price) - parseFloat(b.price)).slice(0, 4);
-            }
-
-            estimatePriceFromName(itemName) {
-                const name = itemName.toLowerCase();
-                
-                // Price estimation based on common patterns
-                if (name.includes('organic') || name.includes('premium')) return 3.50;
-                if (name.includes('luxury') || name.includes('finest')) return 4.50;
-                if (name.includes('value') || name.includes('basic')) return 1.20;
-                
-                // Category-based estimation
-                if (name.match(/meat|beef|chicken|pork|lamb|fish|salmon/)) return 4.00;
-                if (name.match(/fruit|apple|banana|orange|berry/)) return 1.80;
-                if (name.match(/vegetable|potato|carrot|onion|pepper/)) return 1.50;
-                if (name.match(/dairy|milk|cheese|yogurt|cream/)) return 2.20;
-                if (name.match(/bread|bakery|cake|biscuit/)) return 1.60;
-                if (name.match(/cleaning|detergent|soap|shampoo/)) return 2.80;
-                if (name.match(/snack|chocolate|crisp|sweet/)) return 1.90;
-                
-                // Default estimation
-                return 2.00;
-            }
-
-            calculateShopPrice(basePrice, shopConfig) {
-                // Apply shop-specific multiplier
-                let price = basePrice * shopConfig.multiplier;
-                
-                // Add some randomness (±15%)
-                const randomFactor = 0.85 + (Math.random() * 0.30);
-                price *= randomFactor;
-                
-                // Ensure price is within shop's typical range
-                price = Math.max(shopConfig.minPrice, Math.min(price, shopConfig.maxPrice));
-                
-                // Round to realistic price points (ending in .00, .25, .50, .75, .99)
-                const priceEndings = [0.00, 0.25, 0.50, 0.75, 0.99];
-                const wholePrice = Math.floor(price);
-                const randomEnding = priceEndings[Math.floor(Math.random() * priceEndings.length)];
-                
-                return wholePrice + randomEnding;
-            }
-
-            getShopUrl(shopKey, itemName) {
-                const urls = {
-                    tesco: `https://www.tesco.com/groceries/en-GB/search?query=${encodeURIComponent(itemName)}`,
-                    asda: `https://groceries.asda.com/search/${encodeURIComponent(itemName)}`,
-                    sainsburys: `https://www.sainsburys.co.uk/gol-ui/SearchResults/${encodeURIComponent(itemName)}`,
-                    aldi: `https://groceries.aldi.co.uk/search?keywords=${encodeURIComponent(itemName)}`,
-                    bm: `https://www.bmstores.co.uk/search?q=${encodeURIComponent(itemName)}`,
-                    homebargains: `https://www.homebargains.co.uk/search?q=${encodeURIComponent(itemName)}`,
-                    primark: `https://www.primark.com/en-gb/search?q=${encodeURIComponent(itemName)}`
-                };
-                return urls[shopKey] || '#';
+                return selectedShops.map(shop => {
+                    const price = Math.random() * (shop.max - shop.min) + shop.min;
+                    return {
+                        store: shop.name,
+                        price: price.toFixed(2),
+                        url: shop.url + encodeURIComponent(itemName)
+                    };
+                }).sort((a, b) => parseFloat(a.price) - parseFloat(b.price)); // Sort by price, cheapest first
             }
 
             delay(ms) {
