@@ -3,9 +3,9 @@ class ShoppingListApp {
         this.items = [];
         this.templates = [];
         this.itemCounter = 0;
-        this.showPrices = false;
-        this.priceCache = new Map();
         this.scheduledTemplates = [];
+        this.isDarkMode = false;
+        this.groupByStore = true;
         this.initializeElements();
         this.loadFromStorage();
         this.bindEvents();
@@ -16,14 +16,16 @@ class ShoppingListApp {
     initializeElements() {
         this.itemInput = document.getElementById('itemInput');
         this.addBtn = document.getElementById('addBtn');
-        this.priceCheckBtn = document.getElementById('priceCheckBtn');
         this.shoppingList = document.getElementById('shoppingList');
         this.itemCount = document.getElementById('itemCount');
-        this.totalPrice = document.getElementById('totalPrice');
         this.clearAllBtn = document.getElementById('clearAllBtn');
-        this.togglePricesBtn = document.getElementById('togglePricesBtn');
         this.emptyState = document.getElementById('emptyState');
-        
+        this.storeSelector = document.getElementById('storeSelector');
+        this.groupByStoreToggle = document.getElementById('groupByStore');
+        this.themeToggle = document.getElementById('themeToggle');
+        this.themeIcon = document.getElementById('themeIcon');
+        this.exportBtn = document.getElementById('exportBtn');
+
         // Template elements
         this.templateSelect = document.getElementById('templateSelect');
         this.loadTemplateBtn = document.getElementById('loadTemplateBtn');
@@ -31,39 +33,56 @@ class ShoppingListApp {
         this.enableSchedule = document.getElementById('enableSchedule');
         this.scheduleType = document.getElementById('scheduleType');
         this.scheduleBtn = document.getElementById('scheduleBtn');
-        
+
         // Modal elements
         this.templateModal = document.getElementById('templateModal');
         this.templateName = document.getElementById('templateName');
         this.saveTemplateConfirm = document.getElementById('saveTemplateConfirm');
         this.cancelTemplate = document.getElementById('cancelTemplate');
         this.closeModal = document.querySelector('.close');
-        this.loadingOverlay = document.getElementById('loadingOverlay');
     }
 
     bindEvents() {
         this.addBtn.addEventListener('click', () => this.addItem());
-        this.priceCheckBtn.addEventListener('click', () => this.checkAllPrices());
         this.itemInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addItem();
         });
         this.clearAllBtn.addEventListener('click', () => this.clearAllItems());
-        this.togglePricesBtn.addEventListener('click', () => this.togglePriceDisplay());
-        
+
+        if (this.themeToggle) {
+            this.themeToggle.addEventListener('click', () => this.toggleTheme());
+        }
+
+        if (this.groupByStoreToggle) {
+            this.groupByStoreToggle.addEventListener('change', () => {
+                this.groupByStore = this.groupByStoreToggle.checked;
+                this.updateDisplay();
+            });
+        }
+
+        if (this.exportBtn) {
+            this.exportBtn.addEventListener('click', () => this.showExportMenu());
+        }
+
         // Template events
-        this.loadTemplateBtn.addEventListener('click', () => this.loadTemplate());
-        this.saveTemplateBtn.addEventListener('click', () => this.showSaveTemplateModal());
-        this.enableSchedule.addEventListener('change', () => this.toggleScheduleControls());
-        this.scheduleBtn.addEventListener('click', () => this.setupSchedule());
-        
+        if (this.loadTemplateBtn) this.loadTemplateBtn.addEventListener('click', () => this.loadTemplate());
+        if (this.saveTemplateBtn) this.saveTemplateBtn.addEventListener('click', () => this.showSaveTemplateModal());
+        if (this.enableSchedule) this.enableSchedule.addEventListener('change', () => this.toggleScheduleControls());
+        if (this.scheduleBtn) this.scheduleBtn.addEventListener('click', () => this.setupSchedule());
+
         // Modal events
-        this.saveTemplateConfirm.addEventListener('click', () => this.saveTemplate());
-        this.cancelTemplate.addEventListener('click', () => this.hideSaveTemplateModal());
-        this.closeModal.addEventListener('click', () => this.hideSaveTemplateModal());
-        
+        if (this.saveTemplateConfirm) this.saveTemplateConfirm.addEventListener('click', () => this.saveTemplate());
+        if (this.cancelTemplate) this.cancelTemplate.addEventListener('click', () => this.hideSaveTemplateModal());
+        if (this.closeModal) this.closeModal.addEventListener('click', () => this.hideSaveTemplateModal());
+
         window.addEventListener('click', (e) => {
-            if (e.target === this.templateModal) {
+            if (this.templateModal && e.target === this.templateModal) {
                 this.hideSaveTemplateModal();
+            }
+            // Close export menu if clicking outside
+            const exportMenu = document.getElementById('exportMenu');
+            if (exportMenu && !exportMenu.contains(e.target) && e.target !== this.exportBtn) {
+                exportMenu.remove();
             }
         });
     }
@@ -72,13 +91,14 @@ class ShoppingListApp {
         const text = this.itemInput.value.trim();
         if (!text) return;
 
+        const store = this.storeSelector ? this.storeSelector.value : 'grocery';
+
         const item = {
             id: ++this.itemCounter,
             text: text,
+            store: store,
             createdAt: new Date(),
-            modifiedAt: null,
-            price: null,
-            priceOptions: []
+            modifiedAt: null
         };
 
         this.items.push(item);
@@ -93,83 +113,9 @@ class ShoppingListApp {
         if (item && newText.trim() && newText.trim() !== item.text) {
             item.text = newText.trim();
             item.modifiedAt = new Date();
-            // Clear price data when item is edited
-            item.price = null;
-            item.priceOptions = [];
             this.saveToStorage();
             this.updateDisplay();
         }
-    }
-
-    async checkAllPrices() {
-        if (this.items.length === 0) {
-            alert('Add some items to your list first!');
-            return;
-        }
-
-        this.showLoading();
-        
-        try {
-            for (const item of this.items) {
-                await this.checkItemPrice(item);
-                await this.delay(1000); // Rate limiting
-            }
-            this.saveToStorage();
-            this.updateDisplay();
-        } catch (error) {
-            console.error('Error checking prices:', error);
-            alert('Failed to check some prices. Please try again.');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    async checkItemPrice(item) {
-        try {
-            // In a real implementation, this would call actual price APIs
-            // For demo purposes, we'll simulate price data
-            const mockPrices = await this.getMockPriceData(item.text);
-            item.price = mockPrices.length > 0 ? mockPrices[0].price : null;
-            item.priceOptions = mockPrices;
-            this.priceCache.set(item.text.toLowerCase(), mockPrices);
-        } catch (error) {
-            console.error(`Failed to get price for ${item.text}:`, error);
-        }
-    }
-
-    async getMockPriceData(itemName) {
-        // Simulate API delay
-        await this.delay(Math.random() * 1000 + 500);
-        
-        // Mock price data - in real implementation, this would call actual APIs
-        const stores = ['Walmart', 'Target', 'Amazon', 'Kroger', 'Costco'];
-        const basePrice = Math.random() * 20 + 2; // $2-$22 base price
-        
-        return stores.map(store => ({
-            store: store,
-            price: (basePrice + (Math.random() - 0.5) * 4).toFixed(2),
-            url: `https://${store.toLowerCase()}.com/search?q=${encodeURIComponent(itemName)}`
-        })).sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-    }
-
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    togglePriceDisplay() {
-        this.showPrices = !this.showPrices;
-        this.togglePricesBtn.innerHTML = this.showPrices ? 
-            '<i class="fas fa-eye-slash"></i> Hide Prices' : 
-            '<i class="fas fa-eye"></i> Show Prices';
-        this.updateDisplay();
-    }
-
-    showLoading() {
-        this.loadingOverlay.classList.add('active');
-    }
-
-    hideLoading() {
-        this.loadingOverlay.classList.remove('active');
     }
 
     deleteItem(id) {
@@ -204,7 +150,6 @@ class ShoppingListApp {
 
     clearAllItems() {
         if (this.items.length === 0) return;
-        
         if (confirm('Are you sure you want to clear all items? This action cannot be undone.')) {
             this.items = [];
             this.saveToStorage();
@@ -212,27 +157,156 @@ class ShoppingListApp {
         }
     }
 
-    // Template Management
-    saveTemplate() {
-        const name = this.templateName.value.trim();
-        if (!name) {
-            alert('Please enter a template name.');
-            return;
+    // ── Export ────────────────────────────────────────────────────────────────
+
+    getStoreName(storeKey) {
+        const storeNames = {
+            tesco: 'Tesco', asda: 'ASDA', sainsburys: "Sainsbury's",
+            aldi: 'Aldi', lidl: 'Lidl', morrisons: 'Morrisons',
+            homebargains: 'Home Bargains', savers: 'Savers',
+            bq: 'B&Q', bm: 'B&M', primark: 'Primark',
+            pharmacy: 'Pharmacy', other: 'Other'
+        };
+        return storeNames[storeKey] || storeKey;
+    }
+
+    showExportMenu() {
+        const existing = document.getElementById('exportMenu');
+        if (existing) { existing.remove(); return; }
+
+        const menu = document.createElement('div');
+        menu.id = 'exportMenu';
+        menu.className = 'export-menu';
+        menu.innerHTML = `
+            <button class="export-option" id="exportTxt"><i class="fas fa-file-alt"></i> Export as Text</button>
+            <button class="export-option" id="exportCsv"><i class="fas fa-file-csv"></i> Export as CSV</button>
+            <button class="export-option" id="exportClipboard"><i class="fas fa-clipboard"></i> Copy to Clipboard</button>
+        `;
+
+        const btnRect = this.exportBtn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (btnRect.bottom + 8) + 'px';
+        menu.style.left = btnRect.left + 'px';
+        document.body.appendChild(menu);
+
+        document.getElementById('exportTxt').addEventListener('click', () => { this.exportAsText(); menu.remove(); });
+        document.getElementById('exportCsv').addEventListener('click', () => { this.exportAsCSV(); menu.remove(); });
+        document.getElementById('exportClipboard').addEventListener('click', () => { this.copyToClipboard(); menu.remove(); });
+    }
+
+    buildTextContent() {
+        if (this.items.length === 0) return 'Shopping list is empty.';
+        const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        let lines = [`Shopping List — ${date}`, ''];
+
+        if (this.groupByStore) {
+            const groups = {};
+            this.items.forEach(item => {
+                const store = item.store || 'grocery';
+                if (!groups[store]) groups[store] = [];
+                groups[store].push(item);
+            });
+            Object.entries(groups).forEach(([store, items]) => {
+                lines.push(`[ ${this.getStoreName(store)} ]`);
+                items.forEach(item => lines.push(`  • ${item.text}`));
+                lines.push('');
+            });
+        } else {
+            this.items.forEach(item => lines.push(`• ${item.text}`));
         }
 
-        if (this.items.length === 0) {
-            alert('Add some items to your list first!');
-            return;
+        return lines.join('\n');
+    }
+
+    buildCSVContent() {
+        const rows = [['Item', 'Store', 'Added']];
+        this.items.forEach(item => {
+            rows.push([
+                `"${item.text.replace(/"/g, '""')}"`,
+                `"${this.getStoreName(item.store || 'grocery')}"`,
+                `"${new Date(item.createdAt).toLocaleDateString('en-GB')}"`
+            ]);
+        });
+        return rows.map(r => r.join(',')).join('\r\n');
+    }
+
+    exportAsText() {
+        if (this.items.length === 0) { alert('Your shopping list is empty.'); return; }
+        this.downloadFile('shopping-list.txt', this.buildTextContent(), 'text/plain');
+    }
+
+    exportAsCSV() {
+        if (this.items.length === 0) { alert('Your shopping list is empty.'); return; }
+        this.downloadFile('shopping-list.csv', this.buildCSVContent(), 'text/csv');
+    }
+
+    async copyToClipboard() {
+        if (this.items.length === 0) { alert('Your shopping list is empty.'); return; }
+        const text = this.buildTextContent();
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showToast('List copied to clipboard!');
+        } catch {
+            // Fallback
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('List copied to clipboard!');
         }
+    }
+
+    downloadFile(filename, content, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    showToast(message) {
+        const existing = document.getElementById('toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('toast-visible'), 10);
+        setTimeout(() => {
+            toast.classList.remove('toast-visible');
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    }
+
+    // ── Theme ─────────────────────────────────────────────────────────────────
+
+    toggleTheme() {
+        this.isDarkMode = !this.isDarkMode;
+        document.documentElement.setAttribute('data-theme', this.isDarkMode ? 'dark' : '');
+        if (this.themeIcon) {
+            this.themeIcon.className = this.isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+        }
+        localStorage.setItem('shoppingListDarkMode', this.isDarkMode.toString());
+    }
+
+    // ── Templates ─────────────────────────────────────────────────────────────
+
+    saveTemplate() {
+        const name = this.templateName.value.trim();
+        if (!name) { alert('Please enter a template name.'); return; }
+        if (this.items.length === 0) { alert('Add some items to your list first!'); return; }
 
         const template = {
             id: Date.now(),
             name: name,
-            items: this.items.map(item => ({
-                text: item.text,
-                price: item.price,
-                priceOptions: item.priceOptions
-            })),
+            items: this.items.map(item => ({ text: item.text, store: item.store || 'grocery' })),
             createdAt: new Date()
         };
 
@@ -250,19 +324,14 @@ class ShoppingListApp {
         const template = this.templates.find(t => t.id === selectedId);
         if (!template) return;
 
-        if (this.items.length > 0) {
-            if (!confirm('This will replace your current list. Continue?')) {
-                return;
-            }
-        }
+        if (this.items.length > 0 && !confirm('This will replace your current list. Continue?')) return;
 
         this.items = template.items.map(item => ({
             id: ++this.itemCounter,
             text: item.text,
+            store: item.store || 'grocery',
             createdAt: new Date(),
-            modifiedAt: null,
-            price: item.price,
-            priceOptions: item.priceOptions || []
+            modifiedAt: null
         }));
 
         this.saveToStorage();
@@ -271,20 +340,20 @@ class ShoppingListApp {
     }
 
     showSaveTemplateModal() {
-        if (this.items.length === 0) {
-            alert('Add some items to your list first!');
-            return;
+        if (this.items.length === 0) { alert('Add some items to your list first!'); return; }
+        if (this.templateModal) {
+            this.templateModal.style.display = 'block';
+            this.templateName.value = '';
+            this.templateName.focus();
         }
-        this.templateModal.style.display = 'block';
-        this.templateName.value = '';
-        this.templateName.focus();
     }
 
     hideSaveTemplateModal() {
-        this.templateModal.style.display = 'none';
+        if (this.templateModal) this.templateModal.style.display = 'none';
     }
 
     updateTemplateSelect() {
+        if (!this.templateSelect) return;
         this.templateSelect.innerHTML = '<option value="">Select a template...</option>';
         this.templates.forEach(template => {
             const option = document.createElement('option');
@@ -294,8 +363,10 @@ class ShoppingListApp {
         });
     }
 
-    // Schedule Management
+    // ── Scheduling ────────────────────────────────────────────────────────────
+
     toggleScheduleControls() {
+        if (!this.scheduleType || !this.scheduleBtn) return;
         const enabled = this.enableSchedule.checked;
         this.scheduleType.disabled = !enabled;
         this.scheduleBtn.disabled = !enabled;
@@ -304,39 +375,29 @@ class ShoppingListApp {
     setupSchedule() {
         const templateId = parseInt(this.templateSelect.value);
         const scheduleType = this.scheduleType.value;
-        
-        if (!templateId) {
-            alert('Please select a template first.');
-            return;
-        }
+        if (!templateId) { alert('Please select a template first.'); return; }
 
         const template = this.templates.find(t => t.id === templateId);
         if (!template) return;
 
         const schedule = {
-            templateId: templateId,
+            templateId,
             templateName: template.name,
             type: scheduleType,
             nextRun: this.calculateNextRun(scheduleType),
             active: true
         };
 
-        // Remove existing schedule for this template
         this.scheduledTemplates = this.scheduledTemplates.filter(s => s.templateId !== templateId);
         this.scheduledTemplates.push(schedule);
-        
         this.saveToStorage();
         alert(`Schedule set! "${template.name}" will auto-refill ${scheduleType}.`);
     }
 
     calculateNextRun(type) {
         const now = new Date();
-        if (type === 'weekly') {
-            return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        } else if (type === 'monthly') {
-            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-            return nextMonth;
-        }
+        if (type === 'weekly') return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        if (type === 'monthly') return new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
         return now;
     }
 
@@ -347,8 +408,6 @@ class ShoppingListApp {
                 this.executeScheduledTemplate(schedule);
             }
         });
-        
-        // Check again in 1 hour
         setTimeout(() => this.checkScheduledTemplates(), 60 * 60 * 1000);
     }
 
@@ -356,26 +415,20 @@ class ShoppingListApp {
         const template = this.templates.find(t => t.id === schedule.templateId);
         if (!template) return;
 
-        // Add template items to current list
         template.items.forEach(templateItem => {
-            const item = {
+            this.items.push({
                 id: ++this.itemCounter,
                 text: templateItem.text,
+                store: templateItem.store || 'grocery',
                 createdAt: new Date(),
-                modifiedAt: null,
-                price: templateItem.price,
-                priceOptions: templateItem.priceOptions || []
-            };
-            this.items.push(item);
+                modifiedAt: null
+            });
         });
 
-        // Update next run time
         schedule.nextRun = this.calculateNextRun(schedule.type);
-        
         this.saveToStorage();
         this.updateDisplay();
-        
-        // Notify user
+
         if (Notification.permission === 'granted') {
             new Notification('Shopping List Updated', {
                 body: `Template "${schedule.templateName}" has been added to your list.`,
@@ -383,6 +436,8 @@ class ShoppingListApp {
             });
         }
     }
+
+    // ── Display ───────────────────────────────────────────────────────────────
 
     formatTimestamp(date) {
         const now = new Date();
@@ -395,14 +450,7 @@ class ShoppingListApp {
         if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
         if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
         if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-        
-        return date.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        return date.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
     createItemElement(item, index) {
@@ -410,49 +458,23 @@ class ShoppingListApp {
         li.className = 'list-item';
         li.setAttribute('data-id', item.id);
 
-        const modifiedText = item.modifiedAt ? 
+        const modifiedText = item.modifiedAt ?
             `<div class="item-modified">Modified ${this.formatTimestamp(item.modifiedAt)}</div>` : '';
 
-        const priceDisplay = this.showPrices && item.price ? 
-            `<div class="item-price">$${item.price}</div>` : '';
-
-        const priceOptionsHtml = this.showPrices && item.priceOptions && item.priceOptions.length > 0 ? 
-            `<div class="price-suggestions">
-                <h5><i class="fas fa-store"></i> Price Comparison</h5>
-                ${item.priceOptions.slice(0, 3).map(option => 
-                    `<div class="price-option">
-                        <span class="store-name">${option.store}</span>
-                        <span class="store-price">$${option.price}</span>
-                    </div>`
-                ).join('')}
-            </div>` : '';
-
         li.innerHTML = `
-            <div class="item-content">
+            <div class="item-content" draggable="true">
+                <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
                 <div class="item-text">
                     <input type="text" class="item-edit" value="${this.escapeHtml(item.text)}" maxlength="100">
                     <div class="item-name">${this.escapeHtml(item.text)}</div>
                     <div class="item-timestamp">Added ${this.formatTimestamp(item.createdAt)}</div>
                     ${modifiedText}
-                    ${priceDisplay}
-                    ${priceOptionsHtml}
                 </div>
                 <div class="item-actions">
-                    <button class="item-btn edit-btn" title="Edit item">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="item-btn price-btn" title="Check price">
-                        <i class="fas fa-dollar-sign"></i>
-                    </button>
-                    <button class="item-btn move-up-btn" title="Move up" ${index === 0 ? 'disabled' : ''}>
-                        <i class="fas fa-chevron-up"></i>
-                    </button>
-                    <button class="item-btn move-down-btn" title="Move down" ${index === this.items.length - 1 ? 'disabled' : ''}>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <button class="item-btn delete-btn" title="Delete item">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <button class="item-btn edit-btn" title="Edit item"><i class="fas fa-edit"></i></button>
+                    <button class="item-btn move-up-btn" title="Move up" ${index === 0 ? 'disabled' : ''}><i class="fas fa-chevron-up"></i></button>
+                    <button class="item-btn move-down-btn" title="Move down" ${index === this.items.length - 1 ? 'disabled' : ''}><i class="fas fa-chevron-down"></i></button>
+                    <button class="item-btn delete-btn" title="Delete item"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -461,9 +483,55 @@ class ShoppingListApp {
         return li;
     }
 
+    // ── Drag & Drop ───────────────────────────────────────────────────────────
+
+    bindDragEvents(li, id) {
+        const content = li.querySelector('.item-content');
+
+        content.addEventListener('dragstart', (e) => {
+            this.dragSrcId = id;
+            li.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', id);
+        });
+
+        content.addEventListener('dragend', () => {
+            li.classList.remove('dragging');
+            document.querySelectorAll('.list-item').forEach(el => el.classList.remove('drag-over'));
+        });
+
+        li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            document.querySelectorAll('.list-item').forEach(el => el.classList.remove('drag-over'));
+            if (this.dragSrcId !== id) li.classList.add('drag-over');
+        });
+
+        li.addEventListener('dragleave', () => {
+            li.classList.remove('drag-over');
+        });
+
+        li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            li.classList.remove('drag-over');
+            if (this.dragSrcId == null || this.dragSrcId === id) return;
+
+            const srcIndex = this.items.findIndex(item => item.id === this.dragSrcId);
+            const dstIndex = this.items.findIndex(item => item.id === id);
+            if (srcIndex === -1 || dstIndex === -1) return;
+
+            const [moved] = this.items.splice(srcIndex, 1);
+            this.items.splice(dstIndex, 0, moved);
+            this.dragSrcId = null;
+            this.saveToStorage();
+            this.updateDisplay();
+        });
+    }
+
     bindItemEvents(element, id) {
+        this.bindDragEvents(element, id);
+
         const editBtn = element.querySelector('.edit-btn');
-        const priceBtn = element.querySelector('.price-btn');
         const editInput = element.querySelector('.item-edit');
         const itemName = element.querySelector('.item-name');
         const moveUpBtn = element.querySelector('.move-up-btn');
@@ -484,17 +552,6 @@ class ShoppingListApp {
             } else {
                 this.saveEdit(id, editInput.value, editInput, itemName, editBtn);
                 isEditing = false;
-            }
-        });
-
-        priceBtn.addEventListener('click', async () => {
-            const item = this.items.find(item => item.id === id);
-            if (item) {
-                this.showLoading();
-                await this.checkItemPrice(item);
-                this.hideLoading();
-                this.saveToStorage();
-                this.updateDisplay();
             }
         });
 
@@ -531,31 +588,54 @@ class ShoppingListApp {
 
     updateDisplay() {
         this.shoppingList.innerHTML = '';
-        
+
         if (this.items.length === 0) {
             this.emptyState.style.display = 'block';
             this.itemCount.textContent = '0 items';
-            this.totalPrice.textContent = 'Total: $0.00';
             this.clearAllBtn.style.display = 'none';
         } else {
             this.emptyState.style.display = 'none';
             this.clearAllBtn.style.display = 'inline-flex';
-            
-            this.items.forEach((item, index) => {
-                this.shoppingList.appendChild(this.createItemElement(item, index));
-            });
-            
+
+            if (this.groupByStore) {
+                this.renderGroupedByStore();
+            } else {
+                this.items.forEach((item, index) => {
+                    this.shoppingList.appendChild(this.createItemElement(item, index));
+                });
+            }
+
             const count = this.items.length;
             this.itemCount.textContent = `${count} item${count !== 1 ? 's' : ''}`;
-            
-            // Calculate total price
-            const total = this.items.reduce((sum, item) => {
-                return sum + (item.price ? parseFloat(item.price) : 0);
-            }, 0);
-            this.totalPrice.textContent = `Total: $${total.toFixed(2)}`;
         }
-        
+
         this.updateTemplateSelect();
+    }
+
+    renderGroupedByStore() {
+        const groups = {};
+        this.items.forEach(item => {
+            const store = item.store || 'grocery';
+            if (!groups[store]) groups[store] = [];
+            groups[store].push(item);
+        });
+
+        Object.entries(groups).forEach(([store, items]) => {
+            const section = document.createElement('li');
+            section.className = 'store-category';
+            section.innerHTML = `
+                <div class="store-header">
+                    <span>${this.getStoreName(store)}</span>
+                    <span class="store-count">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+                </div>
+                <ul class="store-items"></ul>
+            `;
+            const ul = section.querySelector('.store-items');
+            items.forEach((item, index) => {
+                ul.appendChild(this.createItemElement(item, this.items.indexOf(item)));
+            });
+            this.shoppingList.appendChild(section);
+        });
     }
 
     escapeHtml(text) {
@@ -570,7 +650,7 @@ class ShoppingListApp {
             localStorage.setItem('shoppingListCounter', this.itemCounter.toString());
             localStorage.setItem('shoppingListTemplates', JSON.stringify(this.templates));
             localStorage.setItem('shoppingListSchedules', JSON.stringify(this.scheduledTemplates));
-            localStorage.setItem('shoppingListShowPrices', this.showPrices.toString());
+            localStorage.setItem('shoppingListDarkMode', this.isDarkMode.toString());
         } catch (error) {
             console.error('Failed to save to localStorage:', error);
         }
@@ -582,41 +662,37 @@ class ShoppingListApp {
             const savedCounter = localStorage.getItem('shoppingListCounter');
             const savedTemplates = localStorage.getItem('shoppingListTemplates');
             const savedSchedules = localStorage.getItem('shoppingListSchedules');
-            const savedShowPrices = localStorage.getItem('shoppingListShowPrices');
-            
+            const savedDarkMode = localStorage.getItem('shoppingListDarkMode');
+
             if (savedItems) {
                 this.items = JSON.parse(savedItems).map(item => ({
                     ...item,
                     createdAt: new Date(item.createdAt),
                     modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : null,
-                    price: item.price || null,
-                    priceOptions: item.priceOptions || []
+                    store: item.store || 'grocery'
                 }));
             }
-            
-            if (savedCounter) {
-                this.itemCounter = parseInt(savedCounter, 10);
-            }
-            
+
+            if (savedCounter) this.itemCounter = parseInt(savedCounter, 10);
+
             if (savedTemplates) {
-                this.templates = JSON.parse(savedTemplates).map(template => ({
-                    ...template,
-                    createdAt: new Date(template.createdAt)
+                this.templates = JSON.parse(savedTemplates).map(t => ({
+                    ...t,
+                    createdAt: new Date(t.createdAt)
                 }));
             }
-            
+
             if (savedSchedules) {
-                this.scheduledTemplates = JSON.parse(savedSchedules).map(schedule => ({
-                    ...schedule,
-                    nextRun: new Date(schedule.nextRun)
+                this.scheduledTemplates = JSON.parse(savedSchedules).map(s => ({
+                    ...s,
+                    nextRun: new Date(s.nextRun)
                 }));
             }
-            
-            if (savedShowPrices) {
-                this.showPrices = savedShowPrices === 'true';
-                this.togglePricesBtn.innerHTML = this.showPrices ? 
-                    '<i class="fas fa-eye-slash"></i> Hide Prices' : 
-                    '<i class="fas fa-eye"></i> Show Prices';
+
+            if (savedDarkMode === 'true') {
+                this.isDarkMode = true;
+                document.documentElement.setAttribute('data-theme', 'dark');
+                if (this.themeIcon) this.themeIcon.className = 'fas fa-sun';
             }
         } catch (error) {
             console.error('Failed to load from localStorage:', error);
@@ -624,17 +700,14 @@ class ShoppingListApp {
             this.templates = [];
             this.scheduledTemplates = [];
             this.itemCounter = 0;
-            this.showPrices = false;
         }
     }
 }
 
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
-    
     new ShoppingListApp();
 });
